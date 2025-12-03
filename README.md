@@ -4,7 +4,7 @@ Sistema completo para monitoramento e análise postural em tempo real utilizando
 
 ## 📋 Descrição
 
-Este sistema oferece uma solução completa para análise de postura corporal em tempo real, ideal para ambientes de trabalho, fisioterapia, ergonomia e pesquisa. Utiliza visão computacional avançada para detectar e alertar sobre má postura, fornecendo telemetria detalhada e relatórios personalizados.
+Este sistema oferece uma solução completa para análise de postura corporal em tempo real, utilizado de forma académica no desenvolvimento de um trabalho de Mestrado. Utiliza visão computacional avançada para detectar e alertar sobre má postura, fornecendo telemetria detalhada e relatórios personalizados.
 
 ## ✨ Funcionalidades
 
