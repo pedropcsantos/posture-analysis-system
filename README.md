@@ -25,14 +25,11 @@ Este sistema oferece uma solução completa para análise de postura corporal em
 ## 🔧 Requisitos
 
 ### Hardware
-- **Câmera Intel RealSense** (testado com D435/D455)
-- **Porta USB 3.0** (obrigatório para funcionamento adequado da câmera)
-- Processador: Intel Core i5 ou superior (recomendado i7)
-- RAM: 8GB mínimo (16GB recomendado)
-- Sistema Operacional: Windows 10/11, Linux (Ubuntu 20.04+)
+- **Câmera Intel RealSense** (testado com D415)
+- **Porta USB 3.0** (obrigatório para funcionamento adequado)
 
 ### Software
-- Python 3.8 ou superior
+- Python 3.10.11 ou superior
 - Drivers Intel RealSense SDK 2.0
 - Navegador web moderno (Chrome, Firefox, Edge)
 
