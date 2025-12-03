@@ -1,0 +1,2456 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Análise de Postura</title>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.2.1"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .navigation {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .nav-title {
+            text-align: center;
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 30px;
+        }
+
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+        }
+
+        .menu-item {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border: 2px solid transparent;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .menu-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            border-color: #667eea;
+        }
+
+        .menu-item.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
+        }
+
+        .menu-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .menu-item.active .menu-icon {
+            color: white;
+        }
+
+        .menu-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .menu-description {
+            font-size: 0.95rem;
+            opacity: 0.8;
+            line-height: 1.4;
+        }
+
+        .content-area {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            padding: 30px;
+            min-height: 500px;
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .status-bar {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ccc;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.connected {
+            background: #4CAF50;
+        }
+
+        .status-indicator.analyzing {
+            background: #2196F3;
+        }
+
+        .status-indicator.error {
+            background: #f44336;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(45deg, #f44336, #da190b);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
+        }
+
+        .btn-warning {
+            background: linear-gradient(45deg, #ff9800, #f57c00);
+            color: white;
+        }
+
+        .btn-warning:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 152, 0, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .message {
+            text-align: center;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            font-weight: 500;
+        }
+
+        .message.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        /* Estilos para páginas específicas */
+        .calibration-section {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .calibration-controls {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+        }
+
+        .user-input-group {
+            margin-bottom: 20px;
+        }
+
+        .user-input-group label {
+            display: block;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .calibration-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .calibration-status {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+        }
+
+        .status-message {
+            font-weight: 600;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .progress-container {
+            margin-top: 15px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            text-align: center;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .calibration-instructions {
+            background: #e3f2fd;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #2196F3;
+        }
+
+        .calibration-instructions h3 {
+            margin-bottom: 15px;
+            color: #1976d2;
+        }
+
+        .calibration-instructions ol {
+            padding-left: 20px;
+        }
+
+        .calibration-instructions li {
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+
+        /* Estilos para gerenciamento de usuários */
+        .user-management-section {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .user-selection {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+        }
+
+        .user-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .user-info {
+            background: #e8f5e8;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            border-left: 4px solid #4CAF50;
+        }
+
+        .user-info h3 {
+            margin-bottom: 15px;
+            color: #2e7d32;
+        }
+
+        .warning-section {
+            background: #fff3e0;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #ff9800;
+        }
+
+        .warning-section h3 {
+            margin-bottom: 15px;
+            color: #f57c00;
+        }
+
+        .warning-section ul {
+            margin: 15px 0;
+            padding-left: 20px;
+        }
+
+        .warning-section li {
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+
+        /* Estilos para análise em tempo real */
+        .analysis-section {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .analysis-controls {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+        }
+
+        .analysis-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .analysis-metrics {
+            margin-top: 25px;
+        }
+
+        /* Estilos para sistema de abas de visualização */
+        .view-selector {
+            margin-bottom: 20px;
+        }
+
+        .view-tabs {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .view-tab {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 15px 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 200px;
+            justify-content: space-between;
+        }
+
+        .view-tab:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .view-tab.active {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border-color: #667eea;
+        }
+
+        .tab-icon {
+            font-size: 1.5rem;
+        }
+
+        .tab-title {
+            font-weight: 600;
+            flex: 1;
+        }
+
+        .tab-arrow {
+            font-size: 1.2rem;
+            transition: transform 0.3s ease;
+        }
+
+        .view-tab.active .tab-arrow {
+            transform: rotate(90deg);
+        }
+
+        .view-content {
+            display: none;
+            animation: slideDown 0.3s ease;
+        }
+
+        .view-content.active {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Estilos para visão do operador */
+        .operator-dashboard {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .session-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .overview-card {
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            color: white;
+        }
+
+        .overview-card.primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+        }
+
+        .overview-card.success {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+        }
+
+        .overview-card.warning {
+            background: linear-gradient(45deg, #ff9800, #f57c00);
+        }
+
+        .overview-card h3 {
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .big-metric {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .overview-card p {
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+
+        .current-status {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .status-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            border-left: 4px solid #2196F3;
+        }
+
+        .status-card h4 {
+            margin-bottom: 15px;
+            color: #555;
+        }
+
+        .status-info {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: white;
+            border-radius: 8px;
+        }
+
+        .status-label {
+            font-weight: 600;
+            color: #666;
+        }
+
+        .status-value {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .recent-alerts {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            border-left: 4px solid #ff9800;
+        }
+
+        .recent-alerts h4 {
+            margin-bottom: 15px;
+            color: #555;
+        }
+
+        .alerts-timeline {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .alert-entry {
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border-left: 3px solid #ff9800;
+        }
+
+        .alert-time {
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .alert-message {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .no-alerts {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+
+        /* Estilos para visão do gestor */
+        .manager-dashboard {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .metric-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            border-left: 4px solid #667eea;
+        }
+
+        .metric-card h4 {
+            margin-bottom: 15px;
+            color: #555;
+            font-size: 1.1rem;
+        }
+
+        .metric-values {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .metric-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: white;
+            border-radius: 8px;
+        }
+
+        .metric-label {
+            font-weight: 600;
+            color: #666;
+        }
+
+        .metric-value {
+            font-weight: bold;
+            color: #333;
+            font-size: 1.1rem;
+        }
+
+        .metric-value.warning {
+            color: #ff9800;
+        }
+
+        .metric-value.danger {
+            color: #f44336;
+        }
+
+        .alerts-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .alert-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            background: white;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .alert-item.active {
+            background: #f44336;
+            color: white;
+            animation: alertPulse 1s infinite;
+        }
+
+        .alert-item.warning {
+            background: #ff9800;
+            color: white;
+        }
+
+        @keyframes alertPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .alert-label {
+            font-weight: 600;
+        }
+
+        .alert-status {
+            font-size: 0.9rem;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.2);
+        }
+
+        /* Modal styles */
+        .modal {
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.6);
+            animation: fadeIn 0.3s;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 25px;
+            border: 1px solid #888;
+            width: 90%;
+            max-width: 640px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            position: relative;
+            animation: slideIn 0.4s;
+        }
+
+        .close-button {
+            color: #aaa;
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+            text-decoration: none;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .menu-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                padding: 15px;
+            }
+
+            .calibration-buttons {
+                flex-direction: column;
+            }
+
+            .view-tabs {
+                flex-direction: column;
+            }
+
+            .current-status {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏃‍♂️ Sistema de Análise de Postura</h1>
+            <p>Plataforma completa para monitoramento e análise postural</p>
+        </div>
+
+        <div class="navigation">
+            <div class="nav-title">Menu Principal</div>
+            <div class="menu-grid">
+                <div class="menu-item" data-page="criar-usuario">
+                    <span class="menu-icon">👤</span>
+                    <div class="menu-title">Criar Usuário</div>
+                    <div class="menu-description">Calibrar novo usuário para análise personalizada</div>
+                </div>
+                
+                <div class="menu-item" data-page="iniciar-analise">
+                    <span class="menu-icon">📊</span>
+                    <div class="menu-title">Iniciar Análise</div>
+                    <div class="menu-description">Monitoramento em tempo real da postura</div>
+                </div>
+                
+                <div class="menu-item" data-page="apagar-usuario">
+                    <span class="menu-icon">🗑️</span>
+                    <div class="menu-title">Apagar Usuário</div>
+                    <div class="menu-description">Gerenciar e remover usuários do sistema</div>
+                </div>
+                
+                <div class="menu-item" data-page="verificar-leituras">
+                    <span class="menu-icon">📈</span>
+                    <div class="menu-title">Verificar Últimas Leituras</div>
+                    <div class="menu-description">Visualizar histórico e telemetria completa</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="status-bar">
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div id="statusIndicator" class="status-indicator"></div>
+                    <span id="statusText">Conectando...</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div id="cameraIndicator" class="status-indicator"></div>
+                    <span id="cameraText">Verificando câmera...</span>
+                </div>
+            </div>
+            <div id="currentUser" style="font-weight: 600;"></div>
+        </div>
+
+        <div id="messageArea"></div>
+
+        <div class="content-area">
+            <!-- Página Criar Usuário -->
+            <div id="criar-usuario" class="page">
+                <div class="page-title">👤 Criar Novo Usuário</div>
+                <div id="criar-usuario-content">
+                    <!-- Conteúdo será carregado dinamicamente -->
+                </div>
+            </div>
+
+            <!-- Página Iniciar Análise -->
+            <div id="iniciar-analise" class="page">
+                <div class="page-title">📊 Análise em Tempo Real</div>
+                <div id="iniciar-analise-content">
+                    <!-- Conteúdo será carregado dinamicamente -->
+                </div>
+            </div>
+
+            <!-- Página Apagar Usuário -->
+            <div id="apagar-usuario" class="page">
+                <div class="page-title">🗑️ Gerenciar Usuários</div>
+                <div id="apagar-usuario-content">
+                    <!-- Conteúdo será carregado dinamicamente -->
+                </div>
+            </div>
+
+            <!-- Página Verificar Leituras -->
+            <div id="verificar-leituras" class="page">
+                <div class="page-title">📈 Visualizador de Telemetria</div>
+                <div id="verificar-leituras-content">
+                    <!-- Conteúdo será carregado dinamicamente -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal da C?mera -->
+    <div id="cameraModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h3 id="modalTitle">Visualização da Câmera</h3>
+            <div class="modal-video-container">
+                <img id="cameraFeed" src="" alt="Camera Feed" style="width:100%; border-radius: 8px; background: #333;">
+            </div>
+            <p id="modalInstructions" style="margin-top: 15px; text-align: center;">Este é o feed de vídeo em tempo real com a detecção de pose.</p>
+            <div id="modalActionButtons" style="text-align: center; margin-top: 20px; display: none;">
+                <button id="confirmCalibrationBtn" class="btn btn-success">Confirmar Posição e Calibrar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuração do Socket.IO
+        const socket = io();
+        
+        // Estado da aplicação
+        let currentPage = null;
+        let currentUser = null;
+        let currentView = 'operator';
+        let recentAlerts = [];
+        let calibrationSessionActive = false;
+        let calibrationCurrentUser = null;
+        let cameraConnected = false;
+        
+        // Elementos DOM
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        const cameraIndicator = document.getElementById('cameraIndicator');
+        const cameraText = document.getElementById('cameraText');
+        const currentUserElement = document.getElementById('currentUser');
+        const messageArea = document.getElementById('messageArea');
+        
+        // Função para atualizar status da câmera
+        function updateCameraStatus(connected, message) {
+            cameraConnected = connected;
+            cameraIndicator.className = `status-indicator ${connected ? 'connected' : 'error'}`;
+            cameraText.textContent = message || (connected ? 'Câmera Conectada' : 'Câmera Desconectada');
+            
+            // Atualizar estado dos botões baseado na conexão da câmera
+            updateButtonStates();
+        }
+        
+        // Função para atualizar estado dos botões
+        function updateButtonStates() {
+            // Botões de calibração
+            const startCalibrationBtn = document.getElementById('startCalibrationBtn');
+            const viewCameraBtn = document.getElementById('viewCameraBtn');
+            
+            if (startCalibrationBtn && !calibrationSessionActive) {
+                startCalibrationBtn.disabled = !cameraConnected;
+                if (!cameraConnected) {
+                    startCalibrationBtn.title = 'Câmera não conectada';
+                } else {
+                    startCalibrationBtn.title = '';
+                }
+            }
+            
+            if (viewCameraBtn) {
+                viewCameraBtn.disabled = !cameraConnected;
+                if (!cameraConnected) {
+                    viewCameraBtn.title = 'Câmera não conectada';
+                } else {
+                    viewCameraBtn.title = '';
+                }
+            }
+            
+            // Botões de análise
+            const startAnalysisBtn = document.getElementById('startAnalysisBtn');
+            const userSelectAnalysis = document.getElementById('userSelectAnalysis');
+            const viewCameraAnalysisBtn = document.getElementById('viewCameraAnalysisBtn');
+            
+            if (startAnalysisBtn && userSelectAnalysis) {
+                const hasUser = userSelectAnalysis.value !== '';
+                startAnalysisBtn.disabled = !cameraConnected || !hasUser;
+                if (!cameraConnected) {
+                    startAnalysisBtn.title = 'Câmera não conectada';
+                } else if (!hasUser) {
+                    startAnalysisBtn.title = 'Selecione um usuário';
+                } else {
+                    startAnalysisBtn.title = '';
+                }
+            }
+            
+            if (viewCameraAnalysisBtn) {
+                viewCameraAnalysisBtn.disabled = !cameraConnected;
+                if (!cameraConnected) {
+                    viewCameraAnalysisBtn.title = 'Câmera não conectada';
+                } else {
+                    viewCameraAnalysisBtn.title = '';
+                }
+            }
+        }
+
+        const cameraModal = document.getElementById('cameraModal');
+        const cameraFeed = document.getElementById('cameraFeed');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalInstructions = document.getElementById('modalInstructions');
+        const modalActionButtons = document.getElementById('modalActionButtons');
+        const confirmCalibrationBtn = document.getElementById('confirmCalibrationBtn');
+        const closeButton = cameraModal ? cameraModal.querySelector('.close-button') : null;
+
+        function openCameraModal(mode = 'analysis', options = {}) {
+            if (!cameraModal || !cameraFeed) {
+                return;
+            }
+
+            const { title, instructions, showConfirm } = options;
+
+            if (mode === 'calibration') {
+                if (modalTitle) {
+                    modalTitle.textContent = title || 'Posicionamento para Calibração';
+                }
+                if (modalInstructions) {
+                    modalInstructions.textContent = instructions || 'Fique em uma posição neutra, de frente para a câmera. Garanta que sua cabeça e ombros estejam visíveis. Clique no botão abaixo quando estiver pronto.';
+                }
+                if (modalActionButtons) {
+                    if (typeof showConfirm === 'boolean') {
+                        modalActionButtons.style.display = showConfirm ? 'block' : 'none';
+                    } else {
+                        modalActionButtons.style.display = 'block';
+                    }
+                }
+            } else {
+                if (modalTitle) {
+                    modalTitle.textContent = title || 'Visualização da Câmera';
+                }
+                if (modalInstructions) {
+                    modalInstructions.textContent = instructions || 'Este é o feed de vídeo em tempo real com a detecção de pose.';
+                }
+                if (modalActionButtons) {
+                    if (typeof showConfirm === 'boolean') {
+                        modalActionButtons.style.display = showConfirm ? 'block' : 'none';
+                    } else {
+                        modalActionButtons.style.display = 'none';
+                    }
+                }
+            }
+
+            cameraFeed.src = `/video_feed?t=${Date.now()}`;
+            cameraModal.style.display = 'block';
+        }
+
+        function closeCameraModal() {
+            if (!cameraModal || !cameraFeed) {
+                return;
+            }
+
+            cameraModal.style.display = 'none';
+            cameraFeed.src = '';
+        }
+
+        if (closeButton) {
+            closeButton.addEventListener('click', closeCameraModal);
+        }
+
+        window.addEventListener('click', (event) => {
+            if (event.target === cameraModal) {
+                closeCameraModal();
+            }
+        });
+
+        // Funções utilitárias
+        function showMessage(message, type = 'info') {
+            messageArea.innerHTML = `<div class="message ${type}">${message}</div>`;
+            setTimeout(() => {
+                messageArea.innerHTML = '';
+            }, 5000);
+        }
+
+        function updateStatus(status, text) {
+            statusIndicator.className = `status-indicator ${status}`;
+            statusText.textContent = text;
+        }
+
+        function updateCurrentUser(user) {
+            currentUser = user;
+            currentUserElement.textContent = user ? `Usuário: ${user}` : '';
+        }
+
+        // Sistema de navegação
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            
+            document.querySelectorAll('.menu-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            const targetPage = document.getElementById(pageId);
+            if (targetPage) {
+                targetPage.classList.add('active');
+                currentPage = pageId;
+                
+                const menuItem = document.querySelector(`[data-page="${pageId}"]`);
+                if (menuItem) {
+                    menuItem.classList.add('active');
+                }
+                
+                loadPageContent(pageId);
+                
+                // Atualizar estado dos botões ao trocar de página
+                setTimeout(updateButtonStates, 100);
+            }
+        }
+
+        // Sistema de troca de visualizações
+        function switchView(viewType) {
+            currentView = viewType;
+            
+            document.querySelectorAll('.view-tab').forEach(tab => {
+                tab.classList.remove('active');
+                const arrow = tab.querySelector('.tab-arrow');
+                arrow.textContent = '▶';
+            });
+            
+            const activeTab = document.querySelector(`[data-view="${viewType}"]`);
+            if (activeTab) {
+                activeTab.classList.add('active');
+                const arrow = activeTab.querySelector('.tab-arrow');
+                arrow.textContent = '▼';
+            }
+            
+            document.querySelectorAll('.view-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            const targetView = document.getElementById(`${viewType}View`);
+            if (targetView) {
+                targetView.classList.add('active');
+            }
+        }
+
+        // Carregar conteúdo específico de cada página
+        function loadPageContent(pageId) {
+            const contentDiv = document.getElementById(`${pageId}-content`);
+            
+            switch(pageId) {
+                case 'criar-usuario':
+                    loadCriarUsuarioContent(contentDiv);
+                    break;
+                case 'iniciar-analise':
+                    loadIniciarAnaliseContent(contentDiv);
+                    break;
+                case 'apagar-usuario':
+                    loadApagarUsuarioContent(contentDiv);
+                    break;
+                case 'verificar-leituras':
+                    loadVerificarLeiturasContent(contentDiv);
+                    break;
+            }
+        }
+
+        // Event listeners para navegação
+        document.querySelectorAll('.menu-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const pageId = item.getAttribute('data-page');
+                showPage(pageId);
+            });
+        });
+
+        // Socket.IO event listeners
+        socket.on('connect', () => {
+            updateStatus('connected', 'Conectado');
+            showMessage('Conectado ao servidor', 'success');
+            // Solicitar status da câmera ao conectar
+            socket.emit('check_camera');
+        });
+
+        socket.on('disconnect', () => {
+            updateStatus('', 'Desconectado');
+            updateCameraStatus(false, 'Câmera Desconectada');
+            showMessage('Desconectado do servidor', 'error');
+        });
+
+        socket.on('error', (data) => {
+            showMessage(data.message, 'error');
+        });
+        
+        // Event listener para status da câmera
+        socket.on('camera_status', (data) => {
+            updateCameraStatus(data.connected, data.message);
+            if (!data.connected) {
+                console.warn('Câmera RealSense não detetada');
+            }
+        });
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', () => {
+            showPage('criar-usuario');
+        });
+
+        // Funções de carregamento de conteúdo
+        function loadCriarUsuarioContent(contentDiv) {
+            contentDiv.innerHTML = `
+                <div class="calibration-section">
+                    <div class="calibration-controls">
+                        <div class="user-input-group">
+                            <label for="newUserName">Nome do novo usuário:</label>
+                            <input type="text" id="newUserName" placeholder="Digite o nome do usuário" class="form-input">
+                        </div>
+                        
+                        <div class="calibration-buttons">
+                            <button id="startCalibrationBtn" class="btn btn-primary">Iniciar Calibração</button>
+                            <button id="startCollectionBtn" class="btn btn-warning" style="display: none;">Começar Coleta</button>
+                            <button id="saveCalibrationBtn" class="btn btn-success" style="display: none;">Salvar Calibração</button>
+                            <button id="stopCalibrationBtn" class="btn btn-danger" disabled>Parar Calibração</button>
+                            <button id="viewCameraBtn" class="btn btn-primary">Visualizar Câmera</button>
+                        </div>
+                    </div>
+                    
+                    <div id="calibrationStatus" class="calibration-status">
+                        <div class="status-message">Pronto para iniciar calibração</div>
+                        <div class="progress-container" style="display: none;">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="calibrationProgress"></div>
+                            </div>
+                            <div class="progress-text" id="calibrationProgressText">0%</div>
+                        </div>
+                    </div>
+                    
+                    <div class="calibration-instructions">
+                        <h3>📋 Instruções para Calibração:</h3>
+                        <ol>
+                            <li>Digite o nome do usuário no campo acima</li>
+                            <li>Clique em "Visualizar Câmera" para verificar o posicionamento</li>
+                            <li>Posicione-se de frente para a câmera em posição neutra</li>
+                            <li>Clique em "Iniciar Calibração" quando estiver pronto</li>
+                            <li>Aguarde a detecção da pessoa e clique em "Começar Coleta"</li>
+                            <li>Mantenha-se imóvel durante a coleta de dados</li>
+                            <li>Clique em "Salvar Calibração" quando concluído</li>
+                        </ol>
+                    </div>
+                </div>
+
+            `;
+            
+            setupCalibrationEventListeners();
+        }
+
+        function loadIniciarAnaliseContent(contentDiv) {
+            contentDiv.innerHTML = `
+                <div class="analysis-section">
+                    <div class="analysis-controls">
+                        <div class="user-input-group">
+                            <label for="userSelectAnalysis">Selecionar usuário para análise:</label>
+                            <select id="userSelectAnalysis" class="form-input">
+                                <option value="">Carregando usuários...</option>
+                            </select>
+                        </div>
+                        
+                        <div class="analysis-buttons">
+                            <button id="startAnalysisBtn" class="btn btn-success" disabled>Iniciar Análise</button>
+                            <button id="stopAnalysisBtn" class="btn btn-danger" disabled>Parar Análise</button>
+                            <button id="viewCameraAnalysisBtn" class="btn btn-primary">Visualizar Câmera</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Seletor de Visualização -->
+                    <div id="analysisMetrics" class="analysis-metrics" style="display: none;">
+                        <div class="view-selector">
+                            <div class="view-tabs">
+                                <div class="view-tab active" data-view="operator">
+                                    <span class="tab-icon">👤</span>
+                                    <span class="tab-title">Visão Operador</span>
+                                    <span class="tab-arrow">▼</span>
+                                </div>
+                                <div class="view-tab" data-view="manager">
+                                    <span class="tab-icon">👔</span>
+                                    <span class="tab-title">Visão Gestor</span>
+                                    <span class="tab-arrow">▶</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Visão do Operador -->
+                        <div id="operatorView" class="view-content active">
+                            <div class="operator-dashboard">
+                                <div class="session-overview">
+                                    <div class="overview-card primary">
+                                        <h3>⏱️ Tempo de Sessão</h3>
+                                        <div class="big-metric" id="operatorSessionTime">00:00</div>
+                                        <p>Duração atual da análise</p>
+                                    </div>
+                                    
+                                    <div class="overview-card success">
+                                        <h3>💺 Tempo de Descanso</h3>
+                                        <div class="big-metric" id="operatorRestTime">00:00</div>
+                                        <p>Tempo sentado (descanso)</p>
+                                    </div>
+                                    
+                                    <div class="overview-card warning">
+                                        <h3>⚠️ Tempo Fora de Postura</h3>
+                                        <div class="big-metric" id="operatorBadPosturePercentageBig">0%</div>
+                                        <p>Percentual do tempo total</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="current-status">
+                                    <div class="status-card">
+                                        <h4>📍 Status Atual</h4>
+                                        <div class="status-info">
+                                            <div class="status-item">
+                                                <span class="status-label">Posição:</span>
+                                                <span id="operatorPosition" class="status-value">--</span>
+                                            </div>
+                                            <div class="status-item">
+                                                <span class="status-label">Postura:</span>
+                                                <span id="operatorPostureStatus" class="status-value">Normal</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="status-card">
+                                        <h4>⚠️ Tempo Fora de Postura</h4>
+                                        <div class="status-info">
+                                            <div class="status-item">
+                                                <span class="status-label">Percentual:</span>
+                                                <span id="operatorBadPosturePercentage" class="status-value">0%</span>
+                                            </div>
+                                            <div class="status-item">
+                                                <span class="status-label">Tempo Total:</span>
+                                                <span id="operatorBadPostureTime" class="status-value">00:00</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Visão do Gestor -->
+                        <div id="managerView" class="view-content">
+                            <div class="manager-dashboard">
+                                <div class="metrics-grid">
+                                    <div class="metric-card">
+                                        <h4>📐 Ângulos</h4>
+                                        <div class="metric-values">
+                                            <div class="metric-item">
+                                                <span class="metric-label">Inclinação Frontal Cabeça:</span>
+                                                <span id="pitchValue" class="metric-value">--°</span>
+                                            </div>
+                                            <div class="metric-item">
+                                                <span class="metric-label">Rotação Lateral Ombros:</span>
+                                                <span id="yawValue" class="metric-value">--°</span>
+                                            </div>
+                                            <div class="metric-item">
+                                                <span class="metric-label">Inclinação Lateral Ombros:</span>
+                                                <span id="rollValue" class="metric-value">--°</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="metric-card">
+                                        <h4>🧍 Ângulos do Tronco</h4>
+                                        <div class="metric-values">
+                                            <div class="metric-item">
+                                                <span class="metric-label">Inclinação Frontal:</span>
+                                                <span id="trunkPitchValue" class="metric-value">--°</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="metric-card">
+                                        <h4>🤷‍♂️ Ombros</h4>
+                                        <div class="metric-values">
+                                            <div class="metric-item">
+                                                <span class="metric-label">Elevação:</span>
+                                                <span id="elevationValue" class="metric-value">--%</span>
+                                            </div>
+                                            <div class="metric-item">
+                                                <span class="metric-label">Assimetria:</span>
+                                                <span id="asymmetryValue" class="metric-value">--%</span>
+                                            </div>
+                                            <div class="metric-item">
+                                                <span class="metric-label">Largura:</span>
+                                                <span id="widthValue" class="metric-value">--cm</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="metric-card">
+                                        <h4>📊 Telemetria Avançada</h4>
+                                        <div class="metric-values">
+                                            <div class="metric-item">
+                                                <span class="metric-label">Duração:</span>
+                                                <span id="sessionDuration" class="metric-value">--</span>
+                                            </div>
+                                            <div class="metric-item">
+                                                <span class="metric-label">Tempo em Pé:</span>
+                                                <span id="standingTime" class="metric-value">--</span>
+                                            </div>
+                                            <div class="metric-item">
+                                                <span class="metric-label">Má Postura:</span>
+                                                <span id="badPostureTime" class="metric-value">--</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="metric-card">
+                                        <h4>⚠️ Alertas Detalhados</h4>
+                                        <div class="alerts-list">
+                                            <div class="alert-item" id="pitchAlert">
+                                                <span class="alert-label">Cabeça para Frente</span>
+                                                <span class="alert-status">Normal</span>
+                                            </div>
+                                            <div class="alert-item" id="yawAlert">
+                                                <span class="alert-label">Rotação Excessiva</span>
+                                                <span class="alert-status">Normal</span>
+                                            </div>
+                                            <div class="alert-item" id="rollAlert">
+                                                <span class="alert-label">Inclinação Lateral</span>
+                                                <span class="alert-status">Normal</span>
+                                            </div>
+                                            <div class="alert-item" id="trunkPitchAlert">
+                                                <span class="alert-label">Tronco Inclinado</span>
+                                                <span class="alert-status">Normal</span>
+                                            </div>
+                                            <div class="alert-item" id="elevationAlert">
+                                                <span class="alert-label">Ombros Elevados</span>
+                                                <span class="alert-status">Normal</span>
+                                            </div>
+                                            <div class="alert-item" id="asymmetryAlert">
+                                                <span class="alert-label">Assimetria Ombros</span>
+                                                <span class="alert-status">Normal</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="metric-card">
+                                        <h4>🎯 Detecção de Posição</h4>
+                                        <div class="metric-values">
+                                            <div class="metric-item">
+                                                <span class="metric-label">Posição:</span>
+                                                <span id="currentPosition" class="metric-value">--</span>
+                                            </div>
+                                            <div class="metric-item">
+                                                <span class="metric-label">Score:</span>
+                                                <span id="positionScore" class="metric-value">--</span>
+                                            </div>
+                                            <div class="metric-item">
+                                                <span class="metric-label">Alertas Total:</span>
+                                                <span id="totalAlerts" class="metric-value">0</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            setupAnalysisEventListeners();
+        }
+
+        function loadApagarUsuarioContent(contentDiv) {
+            contentDiv.innerHTML = `
+                <div class="user-management-section">
+                    <div class="user-selection">
+                        <div class="user-input-group">
+                            <label for="userSelectDelete">Selecionar usuário para apagar:</label>
+                            <select id="userSelectDelete" class="form-input">
+                                <option value="">Carregando usuários...</option>
+                            </select>
+                        </div>
+                        
+                        <div class="user-actions">
+                            <button id="deleteUserBtn" class="btn btn-danger" disabled>Apagar Usuário Selecionado</button>
+                            <button id="refreshUsersBtn" class="btn btn-primary">Atualizar Lista</button>
+                        </div>
+                    </div>
+                    
+                    <div class="user-info" id="userInfo" style="display: none;">
+                        <h3>📋 Informações do Usuário</h3>
+                        <div id="userDetails"></div>
+                    </div>
+                    
+                    <div class="warning-section">
+                        <h3>⚠️ Aviso Importante</h3>
+                        <p>A exclusão de um usuário é uma ação <strong>irreversível</strong> que irá:</p>
+                        <ul>
+                            <li>Remover todos os dados de calibração do usuário</li>
+                            <li>Apagar o perfil e imagem associada (se existir)</li>
+                            <li>Excluir todos os relatórios de telemetria</li>
+                            <li>Impossibilitar futuras análises para este usuário</li>
+                        </ul>
+                        <p><strong>Certifique-se de que realmente deseja prosseguir antes de confirmar a exclusão.</strong></p>
+                    </div>
+                </div>
+            `;
+            
+            setupUserManagementEventListeners();
+        }
+
+        async function loadVerificarLeiturasContent(contentDiv) {
+            contentDiv.innerHTML = `
+                <div class="telemetry-dashboard">
+                    <h2 style="text-align:center; color:#555;">📊 Painel de Telemetria</h2>
+
+                    <div style="display:flex; gap:15px; justify-content:center; flex-wrap:wrap; margin:20px 0;">
+                        <div>
+                            <label style="font-weight:600; color:#444;">Usuário</label><br>
+                            <select id="userSelect" style="min-width:220px; padding:6px;">
+                                <option value="">Carregando usuários...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-weight:600; color:#444;">Sessão</label><br>
+                            <select id="sessionSelect" style="min-width:240px; padding:6px;" disabled>
+                                <option value="">Selecione um usuário</option>
+                            </select>
+                        </div>
+                        <div style="align-self:flex-end;">
+                            <button id="loadTelemetry" style="padding:6px 15px; background:#4CAF50; border:none; color:white; border-radius:5px;" disabled>Carregar</button>
+                        </div>
+                    </div>
+
+                    <div id="telemetryContainer" style="margin-top:30px;"></div>
+                </div>
+            `;
+
+            const userSelect = document.getElementById('userSelect');
+            const sessionSelect = document.getElementById('sessionSelect');
+            const loadBtn = document.getElementById('loadTelemetry');
+            const telemetryContainer = document.getElementById('telemetryContainer');
+
+            // --- 1️⃣ Carregar usuários ---
+            const userResp = await fetch('/api/users');
+            const userData = await userResp.json();
+            const users = userData.users || [];
+            userSelect.innerHTML = '<option value="">Selecione um usuário</option>';
+            users.forEach(u => {
+                const opt = document.createElement('option');
+                opt.value = u;
+                opt.textContent = u;
+                userSelect.appendChild(opt);
+            });
+
+            // --- 2️⃣ Ao escolher usuário, buscar sessões ---
+            userSelect.addEventListener('change', async () => {
+                telemetryContainer.innerHTML = "";
+                loadBtn.disabled = true;
+                sessionSelect.disabled = true;
+
+                const user = userSelect.value;
+                if (!user) return;
+
+                sessionSelect.innerHTML = '<option value="">Carregando sessões...</option>';
+                const res = await fetch(`/api/sessions/${user}`);
+                const sessions = await res.json();
+
+                sessionSelect.innerHTML = '<option value="">Selecione uma sessão</option>';
+                sessions.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.id;
+                    opt.textContent = s.timestamp
+                        ? new Date(s.timestamp).toLocaleString('pt-BR')
+                        : `Sessão #${s.id}`;
+                    sessionSelect.appendChild(opt);
+                });
+                sessionSelect.disabled = false;
+            });
+
+            sessionSelect.addEventListener('change', () => {
+                loadBtn.disabled = !(userSelect.value && sessionSelect.value);
+            });
+
+            // --- 3️⃣ Ao clicar em "Carregar" ---
+            loadBtn.addEventListener('click', async () => {
+                telemetryContainer.innerHTML = `<p style="text-align:center;">Carregando...</p>`;
+                const username = userSelect.value;
+                const sessionId = sessionSelect.value;
+                const resp = await fetch(`/api/reports/${username}/${sessionId}`);
+                const data = await resp.json();
+                const telemetry = data.summary || {};
+                telemetryContainer.innerHTML = "";
+                renderTelemetryDashboard(telemetryContainer, telemetry);
+            });
+        }
+
+
+
+        function renderTelemetryDashboard(container, telemetry) {
+            const labelMap = {
+                pitch: "Inclinação cabeça",
+                yaw: "Rotação ombros",
+                roll: "Inclinação lateral ombros",
+                trunk_pitch: "Inclinação frontal tronco",
+                trunk_roll: "Inclinação lateral tronco",
+                em: "Elevação ombros",
+                ed: "Assimetria ombros"
+            };
+
+            const translate = (key) => {
+                for (const base in labelMap) {
+                    if (key.startsWith(base)) return labelMap[base];
+                }
+                return key;
+            };
+
+            const sessionDuration = telemetry.session_duration_seconds
+                ? `${(telemetry.session_duration_seconds / 60).toFixed(1)} min`
+                : "--";
+            const totalAlerts = telemetry.total_alerts || 0;
+            const badPosture = (telemetry.bad_posture_percentage || 0).toFixed(1);
+            const standing = (telemetry.standing_percentage || 0).toFixed(1);
+            const goodPosture = (100 - telemetry.bad_posture_percentage).toFixed(1);
+
+            container.innerHTML = `
+                <!-- Resumo superior -->
+                <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:20px; margin-bottom:30px;">
+                    <div style="flex:1; min-width:150px; background:#f5f7fa; padding:15px; border-radius:10px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+                        <div style="font-size:1.4rem; font-weight:700; color:#333;">${sessionDuration}</div>
+                        <div style="font-size:0.9rem; color:#666;">Duração da sessão</div>
+                    </div>
+                    <div style="flex:1; min-width:150px; background:#f5f7fa; padding:15px; border-radius:10px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+                        <div style="font-size:1.4rem; font-weight:700; color:#f57c00;">${totalAlerts}</div>
+                        <div style="font-size:0.9rem; color:#666;">Alertas totais</div>
+                    </div>
+                    <div style="flex:1; min-width:150px; background:#f5f7fa; padding:15px; border-radius:10px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+                        <div style="font-size:1.4rem; font-weight:700; color:#d32f2f;">${badPosture}%</div>
+                        <div style="font-size:0.9rem; color:#666;">Tempo em má postura</div>
+                    </div>
+                    <div style="flex:1; min-width:150px; background:#f5f7fa; padding:15px; border-radius:10px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+                        <div style="font-size:1.4rem; font-weight:700; color:#388e3c;">${standing}%</div>
+                        <div style="font-size:0.9rem; color:#666;">Tempo em pé</div>
+                    </div>
+                </div>
+
+                <!-- Gráficos -->
+                <div>
+                    <div style="display:flex; gap:20px; justify-content:center;">
+                        <div style="flex:1; text-align:center;">
+                            <canvas id="chartPostureDistribution" height="80"></canvas>
+                            <p style="margin-top:8px; font-weight:600;">
+                                🟢 Em pé ${(telemetry.standing_percentage || 0).toFixed(1)}% |
+                                🔵 Sentado ${(telemetry.sitting_percentage || 0).toFixed(1)}% |
+                                ⚪ Ausente ${(telemetry.absence_percentage || 0).toFixed(1)}%
+                            </p>
+                        </div>
+                        <div style="flex:1; text-align:center;">
+                            <canvas id="chartBadPosture" height="80"></canvas>
+                            <p style="margin-top:8px; font-weight:600;">
+                                🟢 Boa postura ${goodPosture}% |
+                                🔴 Má postura ${badPosture}%
+                            </p>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; gap:20px; justify-content:center; margin-top:40px;">
+                        <div style="flex:1;">
+                            <canvas id="chartAlertTypes" height="90"></canvas>
+                        </div>
+                        <div style="flex:1;">
+                            <canvas id="chartAngleBars" height="90"></canvas>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:40px;">
+                        <h3 style="text-align:center;">📋 Detalhamento de Métricas</h3>
+                        <table style="width:100%; border-collapse:collapse; margin-top:15px; font-size:0.9rem;">
+                            <thead>
+                                <tr style="background:#f8f9fa; border-bottom:2px solid #ddd;">
+                                    <th style="padding:8px; text-align:left;">Variável</th>
+                                    <th style="padding:8px; text-align:right;">Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody id="metricsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+
+            // === Donuts ===
+            new Chart(document.getElementById('chartPostureDistribution'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Em Pé', 'Sentado', 'Ausente'],
+                    datasets: [{
+                        data: [
+                            telemetry.standing_percentage || 0,
+                            telemetry.sitting_percentage || 0,
+                            telemetry.absence_percentage || 0
+                        ],
+                        backgroundColor: ['#4CAF50', '#2196F3', '#9E9E9E']
+                    }]
+                },
+                options: {
+                    cutout: '70%',
+                    plugins: {
+                        title: { display: true, text: 'Distribuição de Tempo (%)' },
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+
+            new Chart(document.getElementById('chartBadPosture'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Má Postura', 'Boa Postura'],
+                    datasets: [{
+                        data: [telemetry.bad_posture_percentage || 0, 100 - (telemetry.bad_posture_percentage || 0)],
+                        backgroundColor: ['#f44336', '#4CAF50']
+                    }]
+                },
+                options: {
+                    cutout: '70%',
+                    plugins: {
+                        title: { display: true, text: 'Tempo em Má Postura (%)' },
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+
+            // === Alertas ===
+            new Chart(document.getElementById('chartAlertTypes'), {
+                type: 'bar',
+                data: {
+                    labels: [
+                        translate('pitch'),
+                        translate('yaw'),
+                        translate('roll'),
+                        translate('trunk_pitch'),
+                        translate('trunk_roll'),
+                        translate('em'),
+                        translate('ed')
+                    ],
+                    datasets: [{
+                        label: 'Alertas',
+                        data: [
+                            telemetry.pitch_alerts || 0,
+                            telemetry.yaw_alerts || 0,
+                            telemetry.roll_alerts || 0,
+                            telemetry.trunk_pitch_alerts || 0,
+                            telemetry.trunk_roll_alerts || 0,
+                            telemetry.em_alerts || 0,
+                            telemetry.ed_alerts || 0
+                        ],
+                        backgroundColor: '#ffb74d',
+                        borderColor: '#f57c00',
+                        borderWidth: 1.5
+                    }]
+                },
+                options: {
+                    scales: { y: { beginAtZero: true } },
+                    plugins: { title: { display: true, text: 'Alertas por Tipo' } }
+                }
+            });
+
+            // === Ângulos ===
+            new Chart(document.getElementById('chartAngleBars'), {
+                type: 'bar',
+                data: {
+                    labels: [
+                        translate('pitch'),
+                        translate('yaw'),
+                        translate('roll'),
+                        translate('trunk_pitch'),
+                        translate('trunk_roll'),
+                        translate('em'),
+                        translate('ed')
+                    ],
+                    datasets: [{
+                        label: 'Variação média (°)',
+                        data: [
+                            telemetry.pitch_mean_diff || 0,
+                            telemetry.yaw_mean_diff || 0,
+                            telemetry.roll_mean_diff || 0,
+                            telemetry.trunk_pitch_mean_diff || 0,
+                            Math.abs(telemetry.trunk_roll_mean_diff || 0),
+                            telemetry.em_mean || 0,
+                            telemetry.ed_mean || 0
+                        ],
+                        backgroundColor: '#667eea'
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    scales: { x: { beginAtZero: true } },
+                    plugins: { title: { display: true, text: 'Variação Média dos Ângulos (°)' } }
+                }
+            });
+
+            // === Tabela ===
+            const tbody = container.querySelector('#metricsTableBody');
+            const ignored = ['frames_processed', 'fps_average', 'timestamp', 'user'];
+            Object.entries(telemetry).forEach(([key, val]) => {
+                if (ignored.includes(key)) return;
+                const name = translate(key);
+                const v = typeof val === 'number' ? val.toFixed(2) : val;
+                tbody.insertAdjacentHTML('beforeend',
+                    `<tr><td style="padding:6px; border-bottom:1px solid #eee;">${name}</td>
+                    <td style="padding:6px; border-bottom:1px solid #eee; text-align:right;">${v}</td></tr>`);
+            });
+        }
+
+
+
+
+        // Funções específicas da calibração
+        function setupCalibrationEventListeners() {
+            const newUserName = document.getElementById('newUserName');
+            const startCalibrationBtn = document.getElementById('startCalibrationBtn');
+            const startCollectionBtn = document.getElementById('startCollectionBtn');
+            const saveCalibrationBtn = document.getElementById('saveCalibrationBtn');
+            const stopCalibrationBtn = document.getElementById('stopCalibrationBtn');
+            const viewCameraBtn = document.getElementById('viewCameraBtn');
+
+            if (viewCameraBtn) {
+                viewCameraBtn.addEventListener('click', () => openCameraModal('analysis'));
+            }
+
+            if (startCalibrationBtn) {
+
+                startCalibrationBtn.addEventListener('click', () => {
+
+                    const userName = newUserName.value.trim();
+
+                    if (!userName) {
+
+                        showMessage('Por favor, digite o nome do usuario', 'error');
+
+                        return;
+
+                    }
+
+
+
+                    const shouldStartSession = !calibrationSessionActive || calibrationCurrentUser !== userName;
+
+                    if (shouldStartSession) {
+
+                        calibrationSessionActive = true;
+
+                        calibrationCurrentUser = userName;
+
+                        socket.emit('start_calibration', { user: userName });
+
+                        startCalibrationBtn.disabled = true;
+
+                        if (stopCalibrationBtn) {
+
+                            stopCalibrationBtn.disabled = false;
+
+                        }
+
+                        updateCurrentUser(userName);
+
+                    }
+
+
+
+                    openCameraModal('calibration', { showConfirm: true });
+
+                });
+
+            }
+
+
+
+            if (confirmCalibrationBtn) {
+
+                confirmCalibrationBtn.onclick = () => {
+
+                    if (!calibrationSessionActive) {
+
+                        return;
+
+                    }
+
+
+
+                    openCameraModal('calibration', {
+
+                        title: 'Calibracao em andamento',
+
+                        instructions: 'Fique na posicao neutra enquanto coletamos os dados.',
+
+                        showConfirm: false
+
+                    });
+
+                    showMessage('Posicao confirmada. Aguarde a deteccao para iniciar a coleta.', 'info');
+
+                };
+
+            }
+
+
+
+            if (startCollectionBtn) {
+                startCollectionBtn.addEventListener('click', () => {
+                    socket.emit('start_calibration_collection');
+                    startCollectionBtn.style.display = 'none';
+                });
+            }
+
+            if (saveCalibrationBtn) {
+                saveCalibrationBtn.addEventListener('click', () => {
+                    socket.emit('save_calibration');
+                });
+            }
+
+            if (stopCalibrationBtn) {
+                stopCalibrationBtn.addEventListener('click', () => {
+                    socket.emit('stop_calibration');
+                });
+            }
+
+            function updateCalibrationStatus(message, showProgress = false, progress = 0) {
+                const statusMessage = document.querySelector('.status-message');
+                const progressContainer = document.querySelector('.progress-container');
+                const calibrationProgress = document.getElementById('calibrationProgress');
+                const calibrationProgressText = document.getElementById('calibrationProgressText');
+
+                if (statusMessage) {
+                    statusMessage.textContent = message;
+                }
+
+                if (showProgress) {
+                    if (progressContainer) {
+                        progressContainer.style.display = 'block';
+                    }
+                    if (calibrationProgress) {
+                        calibrationProgress.style.width = `${progress}%`;
+                    }
+                    if (calibrationProgressText) {
+                        calibrationProgressText.textContent = `${Math.round(progress)}%`;
+                    }
+                } else if (progressContainer) {
+                    progressContainer.style.display = 'none';
+                }
+            }
+
+            function resetCalibrationButtons() {
+                calibrationSessionActive = false;
+                calibrationCurrentUser = null;
+
+                if (startCalibrationBtn) {
+                    startCalibrationBtn.disabled = !cameraConnected;
+                }
+
+                if (startCollectionBtn) {
+                    startCollectionBtn.style.display = 'none';
+                }
+
+                if (saveCalibrationBtn) {
+                    saveCalibrationBtn.style.display = 'none';
+                }
+
+                if (stopCalibrationBtn) {
+                    stopCalibrationBtn.disabled = true;
+                }
+                
+                // Atualizar estado dos botões
+                updateButtonStates();
+            }
+
+
+
+            socket.on('calibration_started', (data) => {
+
+                calibrationSessionActive = true;
+
+                calibrationCurrentUser = data.user || calibrationCurrentUser;
+
+                updateStatus('analyzing', `Calibrando: ${data.user}`);
+
+                showMessage(`Calibra??o iniciada para ${data.user}`, 'success');
+
+                updateCalibrationStatus('Calibra??o iniciada - Aguardando pessoa...');
+
+            });
+
+
+            socket.on('calibration_stopped', () => {
+                resetCalibrationButtons();
+                updateStatus('connected', 'Conectado');
+                showMessage('Calibração parada', 'info');
+                updateCalibrationStatus('Pronto para iniciar calibração');
+            });
+
+            socket.on('calibration_collection_started', () => {
+                showMessage('Coleta de dados iniciada!', 'success');
+                updateCalibrationStatus('Coletando dados...', true, 0);
+            });
+
+            socket.on('calibration_saved', (data) => {
+                showMessage(data.message, 'success');
+                resetCalibrationButtons();
+                updateStatus('connected', 'Conectado');
+                updateCalibrationStatus('Calibração salva com sucesso!');
+                if (newUserName) {
+                    newUserName.value = '';
+                }
+                updateCurrentUser(null);
+            });
+
+            socket.on('calibration_data', (data) => {
+                if (data.status === 'person_detected') {
+                    updateCalibrationStatus('Pessoa detectada - Clique em "Começar Coleta" quando estiver pronto');
+                    if (startCollectionBtn) {
+                        startCollectionBtn.style.display = 'inline-block';
+                    }
+                } else if (data.status === 'calibrating') {
+                    const progress = data.calibration ? data.calibration.progress : 0;
+                    updateCalibrationStatus(data.message, true, progress);
+                } else if (data.status === 'calibration_complete') {
+                    updateCalibrationStatus(data.message, true, 100);
+                    if (saveCalibrationBtn) {
+                        saveCalibrationBtn.style.display = 'inline-block';
+                    }
+                    if (startCollectionBtn) {
+                        startCollectionBtn.style.display = 'none';
+                    }
+                } else if (data.status === 'waiting_person') {
+                    updateCalibrationStatus(data.message);
+                    if (startCollectionBtn) {
+                        startCollectionBtn.style.display = 'none';
+                    }
+                    if (saveCalibrationBtn) {
+                        saveCalibrationBtn.style.display = 'none';
+                    }
+                } else if (data.status === 'error') {
+                    updateCalibrationStatus(`Erro: ${data.message}`);
+                } else {
+                    updateCalibrationStatus(data.message || 'Status desconhecido');
+                }
+            });
+        }
+
+        // Funções específicas do gerenciamento de usuários
+        function setupUserManagementEventListeners() {
+            const userSelectDelete = document.getElementById('userSelectDelete');
+            const deleteUserBtn = document.getElementById('deleteUserBtn');
+            const refreshUsersBtn = document.getElementById('refreshUsersBtn');
+            const userInfo = document.getElementById('userInfo');
+            const userDetails = document.getElementById('userDetails');
+
+            loadUsers();
+
+            userSelectDelete.addEventListener('change', () => {
+                const selectedUser = userSelectDelete.value;
+                deleteUserBtn.disabled = !selectedUser;
+                
+                if (selectedUser) {
+                    showUserInfo(selectedUser);
+                } else {
+                    userInfo.style.display = 'none';
+                }
+            });
+
+            deleteUserBtn.addEventListener('click', () => {
+                const selectedUser = userSelectDelete.value;
+                if (!selectedUser) {
+                    showMessage('Por favor, selecione um usuário para apagar', 'error');
+                    return;
+                }
+
+                if (confirm(`Tem certeza que deseja apagar o usuário '${selectedUser}'Esta ação não pode ser desfeita.`)) {
+                    deleteUser(selectedUser);
+                }
+            });
+
+            refreshUsersBtn.addEventListener('click', () => {
+                loadUsers();
+                showMessage('Lista de usuários atualizada', 'info');
+            });
+
+            async function loadUsers() {
+                try {
+                    const response = await fetch('/api/users');
+                    const data = await response.json();
+                    
+                    userSelectDelete.innerHTML = '<option value="">Selecione um usuário</option>';
+                    data.users.forEach(user => {
+                        const option = document.createElement('option');
+                        option.value = user;
+                        option.textContent = user;
+                        userSelectDelete.appendChild(option);
+                    });
+                } catch (error) {
+                    console.error('Erro ao carregar usuários:', error);
+                    showMessage('Erro ao carregar lista de usuários', 'error');
+                }
+            }
+
+            async function showUserInfo(username) {
+                try {
+                    const response = await fetch(`/api/reports/${username}/latest`);
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        const report = data.report;
+                        
+                        userDetails.innerHTML = `
+                            <p><strong>Nome:</strong> ${username}</p>
+                            <p><strong>Última sessão:</strong> ${report.timestamp || 'N/A'}</p>
+                            <p><strong>Tempo total de uso:</strong> ${Math.round(parseFloat(report.session_duration_seconds || 0) / 60)} minutos</p>
+                            <p><strong>Total de alertas:</strong> ${report.total_alerts || 0}</p>
+                            <p><strong>% Má postura:</strong> ${report.bad_posture_percentage || 0}%</p>
+                        `;
+                        userInfo.style.display = 'block';
+                    } else {
+                        userDetails.innerHTML = `
+                            <p><strong>Nome:</strong> ${username}</p>
+                            <p><strong>Status:</strong> Usuário calibrado, mas sem relatórios de análise</p>
+                            <p><em>Este usuário foi calibrado mas ainda não possui sessões de análise registradas.</em></p>
+                        `;
+                        userInfo.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('Erro ao buscar informações do usuário:', error);
+                    userDetails.innerHTML = `
+                        <p><strong>Nome:</strong> ${username}</p>
+                        <p><strong>Status:</strong> Erro ao carregar informações</p>
+                    `;
+                    userInfo.style.display = 'block';
+                }
+            }
+
+            async function deleteUser(username) {
+                try {
+                    const response = await fetch(`/api/user/${username}`, {
+                        method: 'DELETE',
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        showMessage(data.message, 'success');
+                        loadUsers();
+                        userInfo.style.display = 'none';
+                        deleteUserBtn.disabled = true;
+                    } else {
+                        showMessage(data.error || 'Erro ao apagar usuário', 'error');
+                    }
+                } catch (error) {
+                    console.error('Erro ao apagar usuário:', error);
+                    showMessage('Erro de comunicação ao apagar usuário', 'error');
+                }
+            }
+        }
+
+        // Funções específicas da análise em tempo real
+        function setupAnalysisEventListeners() {
+            const userSelectAnalysis = document.getElementById('userSelectAnalysis');
+            const startAnalysisBtn = document.getElementById('startAnalysisBtn');
+            const stopAnalysisBtn = document.getElementById('stopAnalysisBtn');
+            const viewCameraAnalysisBtn = document.getElementById('viewCameraAnalysisBtn');
+            const analysisMetrics = document.getElementById('analysisMetrics');
+
+            loadUsersForAnalysis();
+
+            // Event listeners para troca de visualização
+            document.addEventListener('click', (e) => {
+                if (e.target.closest('.view-tab')) {
+                    const viewType = e.target.closest('.view-tab').getAttribute('data-view');
+                    switchView(viewType);
+                }
+            });
+
+            userSelectAnalysis.addEventListener('change', () => {
+                updateButtonStates();
+            });
+
+            startAnalysisBtn.addEventListener('click', () => {
+                const selectedUser = userSelectAnalysis.value;
+                if (!selectedUser) {
+                    showMessage('Por favor, selecione um usuário para análise', 'error');
+                    return;
+                }
+                
+                socket.emit('start_analysis', { user: selectedUser });
+                startAnalysisBtn.disabled = true;
+                stopAnalysisBtn.disabled = false;
+                updateCurrentUser(selectedUser);
+                analysisMetrics.style.display = 'block';
+            });
+
+            stopAnalysisBtn.addEventListener('click', () => {
+                socket.emit('stop_analysis');
+                startAnalysisBtn.disabled = false;
+                stopAnalysisBtn.disabled = true;
+                analysisMetrics.style.display = 'none';
+                updateCurrentUser(null);
+            });
+
+            if (viewCameraAnalysisBtn) {
+                viewCameraAnalysisBtn.addEventListener('click', () => {
+                    openCameraModal('analysis', {
+                        title: 'Visualização da Câmera - Análise',
+                        instructions: 'Feed de vídeo em tempo real com detecção de pose durante a análise.'
+                    });
+                });
+            }
+
+            async function loadUsersForAnalysis() {
+                try {
+                    const response = await fetch('/api/users');
+                    const data = await response.json();
+                    
+                    userSelectAnalysis.innerHTML = '<option value="">Selecione um usuário</option>';
+                    data.users.forEach(user => {
+                        const option = document.createElement('option');
+                        option.value = user;
+                        option.textContent = user;
+                        userSelectAnalysis.appendChild(option);
+                    });
+                } catch (error) {
+                    console.error('Erro ao carregar usuários:', error);
+                    showMessage('Erro ao carregar lista de usuários', 'error');
+                }
+            }
+
+            function updateMetrics(data) {
+                // Atualizar visão do operador
+                if (data.telemetry) {
+                    const t = data.telemetry;
+                    const duration = Math.floor(t.session_duration || 0);
+                    const minutes = Math.floor(duration / 60);
+                    const seconds = duration % 60;
+                    
+                    document.getElementById('operatorSessionTime').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                    
+                    const restTime = Math.floor(t.sitting_time || 0);
+                    const restMinutes = Math.floor(restTime / 60);
+                    const restSeconds = restTime % 60;
+                    document.getElementById('operatorRestTime').textContent = `${restMinutes}:${restSeconds.toString().padStart(2, '0')}`;
+                    
+                    // Atualizar tempo fora de postura e percentual
+                    const badPostureTime = Math.floor(t.bad_posture_time || 0);
+                    const badMinutes = Math.floor(badPostureTime / 60);
+                    const badSeconds = badPostureTime % 60;
+                    document.getElementById('operatorBadPostureTime').textContent = `${badMinutes}:${badSeconds.toString().padStart(2, '0')}`;
+                    
+                    // Calcular percentual de tempo fora de postura
+                    const badPosturePercentage = duration > 0 ? ((badPostureTime / duration) * 100).toFixed(1) : 0;
+                    document.getElementById('operatorBadPosturePercentage').textContent = `${badPosturePercentage}%`;
+                    document.getElementById('operatorBadPosturePercentageBig').textContent = `${badPosturePercentage}%`;
+                    
+                    // Aplicar cor baseada no percentual
+                    const percentageElement = document.getElementById('operatorBadPosturePercentage');
+                    percentageElement.classList.remove('warning', 'danger');
+                    if (badPosturePercentage >= 30) {
+                        percentageElement.classList.add('danger');
+                    } else if (badPosturePercentage >= 15) {
+                        percentageElement.classList.add('warning');
+                    }
+                }
+
+                // Atualizar posição atual
+                const position = data.standing ? 'Em Pé' : 'Sentado';
+                document.getElementById('operatorPosition').textContent = position;
+                document.getElementById('currentPosition').textContent = position;
+
+                // Atualizar status da postura
+                const postureStatus = data.events && (data.events.pitch_on || data.events.yaw_on || data.events.roll_on || data.events.em_on || data.events.ed_on) ? 'Má Postura' : 'Normal';
+                document.getElementById('operatorPostureStatus').textContent = postureStatus;
+
+                // Atualizar visão do gestor
+                if (data.metrics) {
+                    const m = data.metrics;
+                    
+                    document.getElementById('pitchValue').textContent = `${m.pitch.toFixed(1)}°`;
+                    document.getElementById('yawValue').textContent = `${m.yaw.toFixed(1)}°`;
+                    document.getElementById('rollValue').textContent = `${m.roll.toFixed(1)}°`;
+                    document.getElementById('elevationValue').textContent = `${(m.elevation ).toFixed(1)}%`;
+                    document.getElementById('asymmetryValue').textContent = `${(m.asymmetry ).toFixed(1)}%`;
+                    document.getElementById('widthValue').textContent = `${m.shoulder_width.toFixed(1)}cm`;
+                    
+                    // Atualizar ângulos do tronco
+                    if (m.trunk_pitch !== null && m.trunk_pitch !== undefined) {
+                        document.getElementById('trunkPitchValue').textContent = `${m.trunk_pitch.toFixed(1)}°`;
+                        updateMetricColor('trunkPitchValue', Math.abs(m.trunk_pitch), 8, 20);
+                    } else {
+                        document.getElementById('trunkPitchValue').textContent = '--°';
+                    }
+                    
+                    // Aplicar cores baseadas nos limiares atualizados
+                    updateMetricColor('pitchValue', Math.abs(m.pitch), 10, 20);
+                    updateMetricColor('yawValue', Math.abs(m.yaw), 10, 20);
+                    updateMetricColor('rollValue', Math.abs(m.roll), 8, 15);
+                    updateMetricColor('elevationValue', Math.abs(m.elevation), 3, 5);
+                    updateMetricColor('asymmetryValue', Math.abs(m.asymmetry), 5, 8);
+                }
+
+                if (data.telemetry) {
+                    const t = data.telemetry;
+                    const duration = Math.floor(t.session_duration || 0);
+                    const minutes = Math.floor(duration / 60);
+                    const seconds = duration % 60;
+                    
+                    document.getElementById('sessionDuration').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                    
+                    const standingTime = Math.floor(t.standing_time || 0);
+                    const standingMinutes = Math.floor(standingTime / 60);
+                    const standingSeconds = standingTime % 60;
+                    document.getElementById('standingTime').textContent = `${standingMinutes}:${standingSeconds.toString().padStart(2, '0')}`;
+                    
+                    const badPostureTime = Math.floor(t.bad_posture_time || 0);
+                    const badMinutes = Math.floor(badPostureTime / 60);
+                    const badSeconds = badPostureTime % 60;
+                    document.getElementById('badPostureTime').textContent = `${badMinutes}:${badSeconds.toString().padStart(2, '0')}`;
+                    
+                    document.getElementById('totalAlerts').textContent = t.total_alerts || 0;
+                }
+
+                if (data.score !== undefined && data.score !== null) {
+                    document.getElementById('positionScore').textContent = data.score.toFixed(1);
+                }
+
+                if (data.events) {
+                    updateAlerts(data.events);
+                    
+                    // Adicionar alertas recentes
+                    const now = Date.now();
+                    if (data.events.pitch_on || data.events.yaw_on || data.events.roll_on || data.events.em_on || data.events.ed_on) {
+                        const alertTypes = [];
+                        if (data.events.pitch_on) alertTypes.push('Cabeça para Frente');
+                        if (data.events.yaw_on) alertTypes.push('Rotação Excessiva');
+                        if (data.events.roll_on) alertTypes.push('Inclinação Ombros');
+                        if (data.events.em_on) alertTypes.push('Ombros Elevados');
+                        if (data.events.ed_on) alertTypes.push('Assimetria Ombros');
+                        
+                        alertTypes.forEach(alertType => {
+                            recentAlerts.push({
+                                timestamp: now,
+                                message: alertType
+                            });
+                        });
+                        
+                        // Manter apenas alertas dos últimos 5 minutos
+                        const fiveMinutesAgo = now - (5 * 60 * 1000);
+                        recentAlerts = recentAlerts.filter(alert => alert.timestamp > fiveMinutesAgo);
+                        
+                        updateOperatorAlertsList();
+                    }
+                }
+            }
+
+            function updateOperatorAlertsList() {
+                const alertsList = document.getElementById('operatorAlertsList');
+                if (recentAlerts.length === 0) {
+                    alertsList.innerHTML = '<p class="no-alerts">Nenhum alerta recente</p>';
+                } else {
+                    const alertsHtml = recentAlerts.slice(-5).reverse().map(alert => {
+                        const time = new Date(alert.timestamp).toLocaleTimeString();
+                        return `
+                            <div class="alert-entry">
+                                <div class="alert-time">${time}</div>
+                                <div class="alert-message">${alert.message}</div>
+                            </div>
+                        `;
+                    }).join('');
+                    alertsList.innerHTML = alertsHtml;
+                }
+            }
+
+            function updateMetricColor(elementId, value, warningThreshold, dangerThreshold) {
+                const element = document.getElementById(elementId);
+                if (element) {
+                    element.classList.remove('warning', 'danger');
+                    
+                    if (value >= dangerThreshold) {
+                        element.classList.add('danger');
+                    } else if (value >= warningThreshold) {
+                        element.classList.add('warning');
+                    }
+                }
+            }
+
+            function updateAlerts(events) {
+                console.log('[DEBUG] updateAlerts chamada com eventos:', events);
+                
+                const alerts = [
+                    { id: 'pitchAlert', active: events.pitch_on },
+                    { id: 'yawAlert', active: events.yaw_on },
+                    { id: 'rollAlert', active: events.roll_on },
+                    { id: 'trunkPitchAlert', active: events.trunk_pitch_on },
+                    { id: 'elevationAlert', active: events.em_on },
+                    { id: 'asymmetryAlert', active: events.ed_on }
+                ];
+
+                alerts.forEach(alert => {
+                    const element = document.getElementById(alert.id);
+                    if (element) {
+                        const statusElement = element.querySelector('.alert-status');
+                        
+                        console.log(`[DEBUG] Processando ${alert.id}: active=${alert.active}, element encontrado=${!!element}`);
+                        
+                        element.classList.remove('active', 'warning');
+                        
+                        if (alert.active) {
+                            element.classList.add('warning');
+                            statusElement.textContent = 'Ativo';
+                            console.log(`[DEBUG] ${alert.id} setado como ATIVO (amarelo)`);
+                        } else {
+                            statusElement.textContent = 'Normal';
+                        }
+                    } else {
+                        console.warn(`[DEBUG] Elemento ${alert.id} NÃO encontrado no DOM!`);
+                    }
+                });
+            }
+
+            // Socket.IO event listeners específicos da análise
+            socket.on('analysis_started', (data) => {
+                updateStatus('analyzing', `Analisando: ${data.user}`);
+                showMessage(`Análise iniciada para ${data.user}`, 'success');
+            });
+
+            socket.on('analysis_stopped', () => {
+                updateStatus('connected', 'Conectado');
+                showMessage('Análise parada', 'info');
+                startAnalysisBtn.disabled = false;
+                stopAnalysisBtn.disabled = true;
+                analysisMetrics.style.display = 'none';
+                updateCurrentUser(null);
+            });
+
+            socket.on('posture_data', (data) => {
+                if (data.status === 'analyzing' || data.status === 'position_detected') {
+                    updateMetrics(data);
+                } else if (data.status !== 'analyzing') {
+                    const statusMessages = {
+                        'no_person': 'Aguardando pessoa...',
+                        'unreliable_shoulders': 'Ombros não detectados',
+                        'insufficient_3d': 'Dados 3D insuficientes',
+                        'error': data.message
+                    };
+                    
+                    if (statusMessages[data.status]) {
+                        console.log('Status:', statusMessages[data.status]);
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
+

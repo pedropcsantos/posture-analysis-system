@@ -1,0 +1,235 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+PIPFILE.lock
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Project specific
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+posture_system.db
+posture.db
+
+# RealSense bag files (large binary files)
+*.bag
+
+# Generated data files
+*.npy
+*.csv
+posture_readings.csv
+users_posture_calibration.csv
+profiles.csv
+
+# User profile images
+perfis/
+profiles/
+
+# Reports directory
+reports/
+*.csv
+
+# Debug output
+debug_output/
+*.png
+*.jpg
+*.jpeg
+f*.png
+f*.jpg
+
+# Backup files
+backup/
+*.bak
+*.backup
+*_backup.*
+*.old
+
+# Mask files
+mask_mesa.npy
+mask_mesa.png
+
+# Model files (if not needed in repo)
+*.task
+*.pt
+pose_landmarker_*.task
+yolov8*.pt
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Log files
+*.log
+logs/
+
+# Configuration files with sensitive data
+config_local.py
+.env.local
+
+# Test files (if you want to exclude them)
+test_*.py
+*_test.py
+
+# Analysis scripts (optional - uncomment if you don't want them in repo)
+# anal_*.py
+# analyze_*.py
+# compare_*.py
+# cria_*.py
+# detecta_*.py
+# generate_*.py
+# get_*.py
+# leitura_*.py
+# manipular_*.py
+# saida_*.py
+# YOLO_*.py
+# aulas.py
+# cut_bag.py
+# hips_mesa.py
+
+# Documentation backups
+*.md.bak
+REFACTORING_README.md
+COMUNICACAO_FRONTEND_BACKEND.md
+
+# Autodesk backup
+Autodesk_backup_code.txt
+
+# HTML backups
+*.html.bak
+index_copia.html
+main_complete.html
+main_final.html
+main_updated.html
