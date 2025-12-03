@@ -216,7 +216,7 @@ Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICE
 
 **Pedro Paulo Campos Santos**
 - Email: santospedropc@gmail.com
-- GitHub: [@santospedropc](https://github.com/santospedropc)
+- GitHub: [@pedropcsantos](https://github.com/pedropcsantos)
 
 ## 🙏 Agradecimentos
 
@@ -224,6 +224,8 @@ Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICE
 - MediaPipe (Google)
 - Flask e Flask-SocketIO
 - Comunidade open-source
+- Instituto Politécnico de Bragança
+- Universidade Tecnológica Federal do Paraná
 
 ## 📚 Referências
 
